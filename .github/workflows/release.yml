@@ -16,20 +16,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: electron-app/package-lock.json
 
-      # Deliberately NOT actions/setup-python. The build script creates a venv
-      # whose bin/python symlinks to the interpreter that made it, and that
-      # symlink ships inside the AppImage. setup-python lives under
-      # /opt/hostedtoolcache/..., a path no end user has, so the artifact would
-      # be dead on arrival. The runner's /usr/bin/python3 at least exists
-      # elsewhere. See the portability note in docs/RUNBOOK.md.
-      - name: Record interpreter the venv will be built against
-        run: |
-          python3 --version
-          readlink -f "$(command -v python3)"
+      # The AppImage script downloads and embeds a relocatable CPython runtime;
+      # it does not depend on the runner's system Python.
 
       - name: Install build dependencies
         run: |
