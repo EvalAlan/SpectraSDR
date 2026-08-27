@@ -1,0 +1,23 @@
+src/backend/scan_hits.sqlite3
+src/backend/connections.json
+src/backend/bookmarks.json
+src/backend/config.json
+recordings/
+__pycache__/
+*.pyc
+
+# Python envs
+.venv/
+venv/
+
+# Build artifacts (multi-GB; never commit)
+build/
+dist/
+electron-app/dist/
+electron-app/node_modules/
+node_modules/
+*.AppImage
+
+# Local tooling state. Previously only excluded by a global gitignore, which
+# does not travel with the repo; .claude/worktrees alone is hundreds of MB.
+.claude/

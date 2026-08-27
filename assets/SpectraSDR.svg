@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="SpectraSDR">
+  <title>SpectraSDR</title>
+  <desc>A spectrum-analyzer pyramid of stacked blocks, coloured cyan through green and yellow to a red peak.</desc>
+
+  <rect width="256" height="256" rx="56" fill="#12121a"/>
+  <rect x="1.5" y="1.5" width="253" height="253" rx="54.5" fill="none" stroke="#2a2a4a" stroke-width="3"/>
+
+  <!-- Symmetric spectrum envelope. Row colours follow the waterfall ramp:
+       cyan (weak) to green to yellow to red (peak), matching the accent
+       variables in src/frontend/style.css. -->
+  <g>
+    <rect x="18" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+
+    <rect x="43" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="43" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+
+    <rect x="68" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="68" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+    <rect x="68" y="130" width="20" height="20" rx="4" fill="#00ff88"/>
+
+    <rect x="93" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="93" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+    <rect x="93" y="130" width="20" height="20" rx="4" fill="#00ff88"/>
+    <rect x="93" y="105" width="20" height="20" rx="4" fill="#ffaa00"/>
+
+    <rect x="118" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="118" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+    <rect x="118" y="130" width="20" height="20" rx="4" fill="#00ff88"/>
+    <rect x="118" y="105" width="20" height="20" rx="4" fill="#ffaa00"/>
+    <rect x="118" y="80" width="20" height="20" rx="4" fill="#ff3366"/>
+
+    <rect x="143" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="143" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+    <rect x="143" y="130" width="20" height="20" rx="4" fill="#00ff88"/>
+    <rect x="143" y="105" width="20" height="20" rx="4" fill="#ffaa00"/>
+
+    <rect x="168" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="168" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+    <rect x="168" y="130" width="20" height="20" rx="4" fill="#00ff88"/>
+
+    <rect x="193" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+    <rect x="193" y="155" width="20" height="20" rx="4" fill="#00e0c8"/>
+
+    <rect x="218" y="180" width="20" height="20" rx="4" fill="#00ccff"/>
+  </g>
+</svg>

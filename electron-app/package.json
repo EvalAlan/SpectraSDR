@@ -1,0 +1,44 @@
+{
+  "name": "spectrasdr-electron",
+  "version": "0.1.0",
+  "description": "Standalone SpectraSDR desktop shell that ships the Python backend + UI together",
+  "main": "src/main.js",
+  "author": "Sydney (via Alan)",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.evalalan.spectrasdr",
+    "productName": "SpectraSDR",
+    "linux": {
+      "target": ["dir"],
+      "category": "Utility",
+      "executableName": "spectrasdr-electron",
+      "icon": "../assets/SpectraSDR.png"
+    },
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "SpectraSDR",
+        "filter": [
+          "src/**",
+          "requirements.txt",
+          "README.md",
+          "docs/**",
+          "assets/**"
+        ]
+      },
+      {
+        "from": "../assets/SpectraSDR.png",
+        "to": "SpectraSDR.png"
+      }
+    ]
+  }
+}

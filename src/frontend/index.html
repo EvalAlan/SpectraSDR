@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpectraSDR</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo"><img src="logo.svg" alt=""/><span>SpectraSDR</span></div>
+      <div class="freq-display" id="freq-readout">100.000 MHz</div>
+      <div class="header-actions">
+        <button id="btn-power" title="Power">⏻</button>
+        <button id="btn-connect-modal" title="Connect">ϟ</button>
+        <button id="btn-bookmarks-toggle" title="Bookmarks">★</button>
+        <button id="btn-settings" title="Settings">☰</button>
+      </div>
+      <div class="status">
+        <span id="status-text">DISCONNECTED</span>
+        <span class="status-dot" id="status-dot"></span>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="bookmarks-panel open" id="bookmarks-panel">
+        <div class="bm-panel-header">
+          <span>Bookmarks</span>
+          <button id="btn-add-bookmark" title="Add bookmark">+</button>
+        </div>
+        <div id="bookmarks-list"></div>
+      </aside>
+
+      <!-- Add Bookmark Modal -->
+      <div class="modal-overlay" id="bookmark-modal" style="display:none">
+        <div class="modal">
+          <h3>Add Bookmark</h3>
+          <div class="control-row">
+            <label>Label</label>
+            <input type="text" id="bm-label" placeholder="Station name">
+          </div>
+          <div class="control-row">
+            <label>Freq (MHz)</label>
+            <input type="number" id="bm-freq" step="0.001">
+          </div>
+          <div class="control-row">
+            <label>Mode</label>
+            <select id="bm-mode" class="mode-btn" style="flex:1">
+              <option value="FM">FM</option>
+              <option value="NFM">NFM</option>
+              <option value="AM">AM</option>
+              <option value="USB">USB</option>
+              <option value="LSB">LSB</option>
+              <option value="CW">CW</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label>Tag</label>
+            <select id="bm-category" class="mode-btn" style="flex:1"></select>
+          </div>
+          <div class="control-row">
+            <label>New Tag(s)</label>
+            <input type="text" id="bm-new-category" placeholder="optional, comma-separated">
+          </div>
+          <div class="control-row" style="margin-top:12px">
+            <button id="btn-save-bookmark" style="flex:1">Save</button>
+            <button id="btn-cancel-bookmark" style="flex:1">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-panel" id="viz-panel">
+        <div class="spectrum-container">
+          <canvas id="spectrum-canvas"></canvas>
+        </div>
+        <div id="decoder-log" style="display:none; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.8); color: #0f0; padding: 5px; font-family: monospace; border-bottom: 1px solid #333;"></div>
+        <canvas id="waterfall-canvas"></canvas>
+      </div>
+
+      <div class="map-panel" id="map-panel">
+        <div class="map-header" id="map-header">
+          <span>Aircraft Map</span>
+          <span id="map-aircraft-count" class="map-count">0</span>
+          <button id="btn-center-map" title="Center on aircraft">⊙</button>
+          <button id="btn-close-map" title="Close map">✕</button>
+        </div>
+        <div id="map-container"></div>
+      </div>
+
+      <aside class="control-panel">
+        <section class="panel-section">
+          <h3>S-Meter</h3>
+          <div class="s-meter-bar-container">
+            <div class="s-meter-bar" id="s-meter-bar"></div>
+          </div>
+          <div class="s-meter-reading" id="s-meter-reading">S0</div>
+        </section>
+
+        <button class="btn-start" id="btn-start">▶ START</button>
+
+        <section class="panel-section">
+          <h3>Mode</h3>
+          <div class="mode-grid">
+            <button class="mode-btn" data-mode="AM">AM</button>
+            <button class="mode-btn active" data-mode="FM">FM</button>
+            <button class="mode-btn" data-mode="NFM">NFM</button>
+            <button class="mode-btn" data-mode="LSB">LSB</button>
+            <button class="mode-btn" data-mode="USB">USB</button>
+            <button class="mode-btn" data-mode="CW">CW</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Audio</h3>
+          <div class="control-row">
+            <label>Volume</label>
+            <input type="range" id="volume-slider" min="0" max="100" value="50">
+            <span class="value" id="volume-value">50%</span>
+          </div>
+          <div class="control-row">
+            <label>Squelch</label>
+            <input type="range" id="squelch-slider" min="-120" max="0" value="-60">
+            <span class="value" id="squelch-value">-60 dB</span>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Scanner & Decoders</h3>
+          <div class="control-row">
+            <select id="scan-category">
+              <option value="">All Categories</option>
+            </select>
+            <button id="btn-scan" class="scan-btn">START SCAN</button>
+            <button id="btn-skip" class="scan-btn" title="Skip to next bookmark">⏭</button>
+          </div>
+          
+          <div id="scan-info" class="scan-info" style="font-size:0.85em;color:#0f0;padding:2px 0;display:none;"></div>
+
+          <div class="range-scan-box">
+            <div class="control-row">
+              <input type="number" id="range-start" placeholder="Start" value="88.0" step="0.1">
+              <span class="sep">–</span>
+              <input type="number" id="range-end" placeholder="End" value="108.0" step="0.1">
+              <span class="unit">MHz</span>
+            </div>
+            <div class="control-row">
+              <label>Step</label>
+              <input type="number" id="range-step" value="100" step="1">
+              <span class="unit">kHz</span>
+              <select id="range-mode">
+                <option value="FM">FM</option>
+                <option value="NFM">NFM</option>
+                <option value="AM">AM</option>
+              </select>
+            </div>
+            <button id="btn-range-scan" class="scan-btn btn-full">RANGE SCAN</button>
+          </div>
+
+          <div class="control-row">
+            <label>Speed</label>
+            <input type="range" id="scan-speed-slider" min="10" max="1000" step="10" value="100">
+            <span class="value" id="scan-speed-value">100ms</span>
+          </div>
+          <div class="control-row">
+            <label>POCSAG</label>
+            <input type="checkbox" id="chk-pocsag">
+          </div>
+          <div class="control-row">
+            <label>ADS-B</label>
+            <input type="checkbox" id="chk-adsb">
+            <button id="btn-show-map" class="scan-btn" style="display:none" title="Show aircraft map">MAP</button>
+          </div>
+          <div class="control-row" style="margin-top:8px;align-items:center;">
+            <label>Hits</label>
+            <select id="scan-hit-mode" class="mode-btn" style="flex:1">
+              <option value="">All</option>
+              <option value="FM">FM</option>
+              <option value="NFM">NFM</option>
+              <option value="AM">AM</option>
+              <option value="USB">USB</option>
+              <option value="LSB">LSB</option>
+            </select>
+            <button id="btn-refresh-hits" class="scan-btn">REFRESH</button>
+          </div>
+          <div class="control-row">
+            <label>From</label>
+            <input type="datetime-local" id="scan-hit-from" class="date-input">
+            <label>To</label>
+            <input type="datetime-local" id="scan-hit-to" class="date-input">
+          </div>
+          <div class="control-row">
+            <label>Hours</label>
+            <input type="number" id="scan-hit-hours" value="24" min="1" max="720">
+            <label>Profile</label>
+            <select id="scan-hit-profile" class="mode-btn" style="flex:1">
+              <option value="">All Profiles</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label>Scan</label>
+            <select id="scan-hit-scan-mode" class="mode-btn" style="flex:1">
+              <option value="">All</option>
+              <option value="BOOKMARK">Bookmark</option>
+              <option value="RANGE">Range</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <button id="btn-export-csv" class="scan-btn">EXPORT CSV</button>
+            <button id="btn-export-json" class="scan-btn">EXPORT JSON</button>
+            <button id="btn-prune-hits" class="scan-btn">PRUNE</button>
+          </div>
+          <div id="scan-hit-list" class="scan-hit-list"></div>
+          <div class="control-row" style="margin-top:12px;align-items:center;">
+            <label>Analytics</label>
+            <button id="btn-refresh-analytics" class="scan-btn">REFRESH</button>
+          </div>
+          <div id="scan-analytics" class="scan-analytics"></div>
+          <div class="control-row" style="margin-top:8px;align-items:center;">
+            <label>Aircraft</label>
+            <button id="btn-refresh-adsb" class="scan-btn">REFRESH</button>
+          </div>
+          <div id="adsb-aircraft-list" class="scan-hit-list"></div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Frequency</h3>
+          <div class="freq-input-group">
+            <input type="number" id="freq-input" step="0.001" value="100.000">
+            <button id="btn-set-freq" class="btn-set">SET</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Visualizer</h3>
+          <div class="control-row">
+            <label>Gain</label>
+            <input type="range" id="viz-gain-slider" min="0.2" max="5.0" step="0.1" value="1.0">
+            <span class="value" id="viz-gain-value">1.0x</span>
+          </div>
+          <div class="control-row">
+            <label>Offset</label>
+            <input type="range" id="viz-offset-slider" min="-1.0" max="1.0" step="0.05" value="0.0">
+            <span class="value" id="viz-offset-value">0.0</span>
+          </div>
+          <div class="control-row">
+            <label>Theme</label>
+            <select id="waterfall-theme" class="mode-btn" style="flex:1">
+              <option value="classic">Classic (Cyan/Magenta)</option>
+              <option value="magma">Magma (Fire)</option>
+              <option value="viridis">Viridis (Green/Blue)</option>
+              <option value="inferno">Inferno (Dark Fire)</option>
+              <option value="plasma">Plasma (Blue/Red)</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <button id="btn-auto-scale" class="active">AUTO</button>
+            <button id="btn-manual-scale">MANUAL</button>
+          </div>
+          <div id="manual-range-controls" style="display:none">
+            <input type="range" id="min-db-slider" min="-120" max="0" value="-80">
+            <input type="range" id="max-db-slider" min="-120" max="0" value="-20">
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3>Recording</h3>
+          <div class="control-row">
+            <button id="btn-rec-audio" class="rec-btn">🔴 REC Audio</button>
+            <button id="btn-rec-iq" class="rec-btn">🔴 REC IQ</button>
+          </div>
+          <div id="rec-status" class="rec-status" style="display:none"></div>
+        </section>
+
+        <section class="panel-section">
+          <h3>RF Gain</h3>
+          <div class="control-row">
+            <label>LNA</label>
+            <input type="range" id="rf-gain-slider" min="0" max="500" step="10" value="400">
+          </div>
+          <div class="control-row">
+            <label>AGC</label>
+            <input type="checkbox" id="chk-agc">
+          </div>
+        </section>
+      </aside>
+    </main>
+
+        <div class="modal-overlay" id="connect-modal" style="display:none">
+      <div class="modal">
+        <h3>Connection Manager</h3>
+        <div class="conn-status-line" id="conn-status-line">Not connected</div>
+        <div class="connection-list" id="connection-list"></div>
+        <div class="control-row">
+          <label>Name</label>
+          <input type="text" id="conn-name" placeholder="Profile name">
+        </div>
+        <div class="control-row">
+          <label>Host</label>
+          <input type="text" id="conn-host" value="127.0.0.1">
+        </div>
+        <div class="control-row">
+          <label>Port</label>
+          <input type="number" id="conn-port" value="1234">
+        </div>
+        <div class="control-row">
+          <label>Driver</label>
+          <select id="conn-driver" class="mode-btn" style="flex: 1">
+            <option value="rtl_tcp">RTL-TCP</option>
+            <option value="soapy">SoapySDR</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label>Rate</label>
+          <select id="conn-sample-rate" class="mode-btn" style="flex: 1">
+             <option value="1024000">1.024 MSPS</option>
+             <option value="2048000">2.048 MSPS</option>
+             <option value="2400000" selected>2.400 MSPS</option>
+             <option value="3200000">3.200 MSPS</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <button id="btn-save-connection" style="flex: 1">Save Profile</button>
+          <button id="btn-delete-connection" style="flex: 1">Delete Profile</button>
+        </div>
+        <div class="control-row" style="margin-top: 12px">
+          <button id="btn-do-connect" style="flex: 1">Connect</button>
+          <button id="btn-disconnect" style="flex: 1">Disconnect</button>
+        </div>
+        <button id="btn-close-connect" style="width: 100%">Close</button>
+      </div>
+    </div>
+<div class="modal-overlay" id="settings-modal" style="display:none">
+    <div class="modal settings-modal">
+      <div class="settings-header">
+        <h3>Settings</h3>
+        <button id="btn-close-settings" class="settings-close">&times;</button>
+      </div>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="audio">Audio</button>
+        <button class="settings-tab" data-tab="visualization">Visualization</button>
+        <button class="settings-tab" data-tab="frequency">Frequency</button>
+        <button class="settings-tab" data-tab="recording">Recording</button>
+        <button class="settings-tab" data-tab="plugins">Plugins</button>
+        <button class="settings-tab" data-tab="advanced">Advanced</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-pane active" data-pane="audio">
+          <div class="control-row"><label>Output Device</label><select id="set-audio-output" class="mode-btn" style="flex:1"><option>Default</option></select></div>
+          <div class="control-row"><label>Buffer Size</label><select id="set-audio-buffer" class="mode-btn" style="flex:1"><option value="256">256</option><option value="512">512</option><option value="1024" selected>1024</option><option value="2048">2048</option><option value="4096">4096</option></select></div>
+          <div class="control-row"><label>Noise Reduction</label><input type="checkbox" id="set-noise-reduction"></div>
+          <div class="control-row"><label>NR Level</label><input type="range" id="set-nr-level" min="0" max="100" value="30"><span class="value" id="set-nr-value">30</span></div>
+        </div>
+        <div class="settings-pane" data-pane="visualization">
+          <div class="control-row"><label>FPS Limit</label><select id="set-fps" class="mode-btn" style="flex:1"><option value="30">30</option><option value="60" selected>60</option></select></div>
+          <div class="control-row"><label>FFT Size</label><select id="set-fft" class="mode-btn" style="flex:1"><option value="1024">1024</option><option value="2048" selected>2048</option><option value="4096">4096</option><option value="8192">8192</option></select></div>
+          <div class="control-row"><label>Peak Hold</label><input type="checkbox" id="set-peak-hold"></div>
+          <div class="control-row"><label>Averaging</label><input type="range" id="set-averaging" min="1" max="20" value="4"><span class="value" id="set-avg-value">4</span></div>
+        </div>
+        <div class="settings-pane" data-pane="frequency">
+          <div class="control-row"><label>Correction (ppm)</label><input type="number" id="set-ppm" value="0" step="1"></div>
+          <div class="control-row"><label>Default Step (kHz)</label><input type="number" id="set-step" value="100" step="1"></div>
+          <div class="control-row"><label>Direct Sampling</label><select id="set-direct" class="mode-btn" style="flex:1"><option value="0">Off</option><option value="1">I</option><option value="2">Q</option></select></div>
+        </div>
+        <div class="settings-pane" data-pane="recording">
+          <div class="control-row"><label>Format</label><select id="set-rec-fmt" class="mode-btn" style="flex:1"><option value="wav">WAV</option><option value="raw">Raw IQ</option></select></div>
+          <div class="control-row"><label>Auto-split (min)</label><input type="number" id="set-rec-split" value="0" min="0" step="1"></div>
+          <div class="control-row"><label>Add Timestamp</label><input type="checkbox" id="set-rec-ts" checked></div>
+        </div>
+        <div class="settings-pane" data-pane="plugins">
+          <div id="plugin-list" class="plugin-list"></div>
+          <div class="control-row" style="margin-top:12px">
+            <button id="btn-refresh-plugins" class="scan-btn" style="width:48%">Refresh</button>
+            <button id="btn-reload-plugins" class="scan-btn" style="width:48%;margin-left:4%">Reload All</button>
+          </div>
+          <div class="control-row"><label>Auto-watch</label><span id="plugin-watch-status" class="value">on</span></div>
+          <div class="control-row"><label>Last refresh</label><span id="plugin-status-refresh" class="value">never</span></div>
+        </div>
+        <div class="settings-pane" data-pane="advanced">
+          <div class="control-row"><label>WebSocket Reconnect</label><input type="checkbox" id="set-ws-reconnect" checked></div>
+          <div class="control-row"><label>Debug Logging</label><input type="checkbox" id="set-debug"></div>
+          <div class="control-row"><label>Theme</label><select id="set-theme" class="mode-btn" style="flex:1"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+          <div class="control-row" style="margin-top:12px"><button id="btn-reset-settings" style="width:100%;background:rgba(255,0,0,0.15);border-color:#f44">Reset All Settings</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="map.js?v=3"></script>
+  <script src="app.js?v=7"></script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+{
+  "bookmarks": [
+    {
+      "frequency": 88700000,
+      "label": "88.7 MHz - WBFO (NPR)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 91300000,
+      "label": "91.3 MHz - WBNY (College/Alternative)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 92900000,
+      "label": "92.9 MHz - WBUF (Alternative Rock)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 93700000,
+      "label": "93.7 MHz - WBLK (Urban/R&B)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 94500000,
+      "label": "94.5 MHz - WNED (Classical)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 96900000,
+      "label": "96.9 MHz - WGRF \"97 Rock\" (Classic Rock)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 98500000,
+      "label": "98.5 MHz - WKSE (CHR/Top 40)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 102500000,
+      "label": "102.5 MHz - WTSS (Hot AC)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 103300000,
+      "label": "103.3 MHz - WEDG (Alternative)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 104100000,
+      "label": "104.1 MHz - WHTT-FM (Classic Hits)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 107700000,
+      "label": "107.7 MHz - WKBU (Alternative)",
+      "mode": "FM",
+      "tags": [
+        "FM Radio"
+      ]
+    },
+    {
+      "frequency": 550000,
+      "label": "550 kHz - WGR (Sports)",
+      "mode": "AM",
+      "tags": [
+        "AM Radio"
+      ]
+    },
+    {
+      "frequency": 930000,
+      "label": "930 kHz - WBEN (News/Talk)",
+      "mode": "AM",
+      "tags": [
+        "AM Radio"
+      ]
+    },
+    {
+      "frequency": 1120000,
+      "label": "1120 kHz - WBBF (Spanish)",
+      "mode": "AM",
+      "tags": [
+        "AM Radio"
+      ]
+    },
+    {
+      "frequency": 1400000,
+      "label": "1400 kHz - WDCX (Christian)",
+      "mode": "AM",
+      "tags": [
+        "AM Radio"
+      ]
+    },
+    {
+      "frequency": 1460000,
+      "label": "1460 kHz - WBBZ (Variety)",
+      "mode": "AM",
+      "tags": [
+        "AM Radio"
+      ]
+    },
+    {
+      "frequency": 120500000,
+      "label": "120.5 MHz - KBUF Tower",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 124700000,
+      "label": "124.7 MHz - KBUF Clearance Delivery",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 126150000,
+      "label": "126.15 MHz - KBUF Approach/Departure",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 133200000,
+      "label": "133.2 MHz - KBUF Ground",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 135350000,
+      "label": "135.35 MHz - KBUF ATIS",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 118500000,
+      "label": "118.5 MHz - KIAG CTAF/Tower",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 119250000,
+      "label": "119.25 MHz - KIAG Clearance Delivery",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 120800000,
+      "label": "120.8 MHz - KIAG ATIS",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 121700000,
+      "label": "121.7 MHz - KIAG Ground",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 126500000,
+      "label": "126.5 MHz - Buffalo Approach",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 121500000,
+      "label": "121.5 MHz - Emergency Guard",
+      "mode": "AM",
+      "tags": [
+        "Airband",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 160230000,
+      "label": "160.230 MHz - AAR 08 (Amtrak Road)",
+      "mode": "NFM",
+      "tags": [
+        "Rail",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 160290000,
+      "label": "160.290 MHz - AAR 14 (Amtrak Road)",
+      "mode": "NFM",
+      "tags": [
+        "Rail",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 160380000,
+      "label": "160.380 MHz - AAR 26 (Amtrak Dispatch)",
+      "mode": "NFM",
+      "tags": [
+        "Rail",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 160800000,
+      "label": "160.800 MHz - AAR 46 (CSX Niagara Falls Tower)",
+      "mode": "NFM",
+      "tags": [
+        "Rail",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 160890000,
+      "label": "160.890 MHz - AAR 52 (CSX Traffic)",
+      "mode": "NFM",
+      "tags": [
+        "Rail",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 154130000,
+      "label": "154.130 MHz - North Tonawanda Fire",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 154415000,
+      "label": "154.415 MHz - Lockport FD / North Tonawanda Fire",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 154755000,
+      "label": "154.755 MHz - North Tonawanda Police Dispatch",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 155175000,
+      "label": "155.175 MHz - MERS (Ambulances to Hospitals)",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 155220000,
+      "label": "155.220 MHz - EMS Dispatch",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 460175000,
+      "label": "460.175 MHz - North Tonawanda Police",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 460550000,
+      "label": "460.550 MHz - Twin City Ambulance",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 425437500,
+      "label": "425.4375 MHz - Niagara County UHF Fire/Police (D465)",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 425462500,
+      "label": "425.4625 MHz - Niagara County Fire Dispatch (179.9 PL)",
+      "mode": "NFM",
+      "tags": [
+        "EMS/Fire/Police",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 162400000,
+      "label": "162.400 MHz - WX1 (Buffalo/Tonawanda area)",
+      "mode": "NFM",
+      "tags": [
+        "Weather"
+      ]
+    },
+    {
+      "frequency": 162425000,
+      "label": "162.425 MHz - WX2 (Secondary)",
+      "mode": "NFM",
+      "tags": [
+        "Weather"
+      ]
+    },
+    {
+      "frequency": 162450000,
+      "label": "162.450 MHz - WX3 (Secondary)",
+      "mode": "NFM",
+      "tags": [
+        "Weather"
+      ]
+    },
+    {
+      "frequency": 162475000,
+      "label": "162.475 MHz - WX4 (Secondary)",
+      "mode": "NFM",
+      "tags": [
+        "Weather"
+      ]
+    },
+    {
+      "frequency": 162550000,
+      "label": "162.550 MHz - WX7 (Buffalo area)",
+      "mode": "NFM",
+      "tags": [
+        "Weather"
+      ]
+    },
+    {
+      "frequency": 462562500,
+      "label": "462.5625 MHz - GMRS Channel 1 (Simplex)",
+      "mode": "NFM",
+      "tags": [
+        "GMRS",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 462587500,
+      "label": "462.5875 MHz - GMRS Channel 2 (Simplex)",
+      "mode": "NFM",
+      "tags": [
+        "GMRS",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 462612500,
+      "label": "462.6125 MHz - GMRS Channel 3 (Simplex)",
+      "mode": "NFM",
+      "tags": [
+        "GMRS",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 467600000,
+      "label": "467.600 MHz - GMRS Repeater Output Ch 15-22",
+      "mode": "NFM",
+      "tags": [
+        "GMRS",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 146520000,
+      "label": "146.52 MHz - SKYWARN National Simplex",
+      "mode": "NFM",
+      "tags": [
+        "HAM Radio - SKYWARN"
+      ]
+    },
+    {
+      "frequency": 145250000,
+      "label": "145.250 MHz - W2SO Repeater (Niagara Falls), -600, 110.9 PL",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 146610000,
+      "label": "146.610 MHz - WB2JPQ Repeater (Buffalo), -600, 107.2 PL",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 147255000,
+      "label": "147.255 MHz - K2NIA Repeater (Niagara County), +600, 107.2 PL",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 147390000,
+      "label": "147.390 MHz - W2SO Repeater (Buffalo), +600, 110.9 PL",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 146520000,
+      "label": "146.520 MHz - 2m National Simplex Calling",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    },
+    {
+      "frequency": 446000000,
+      "label": "446.000 MHz - 70cm National Simplex Calling",
+      "mode": "NFM",
+      "tags": [
+        "Ham Radio",
+        "Scanner"
+      ]
+    }
+  ]
+}

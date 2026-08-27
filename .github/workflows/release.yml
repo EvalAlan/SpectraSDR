@@ -1,0 +1,66 @@
+name: Build AppImage
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: electron-app/package-lock.json
+
+      # Deliberately NOT actions/setup-python. The build script creates a venv
+      # whose bin/python symlinks to the interpreter that made it, and that
+      # symlink ships inside the AppImage. setup-python lives under
+      # /opt/hostedtoolcache/..., a path no end user has, so the artifact would
+      # be dead on arrival. The runner's /usr/bin/python3 at least exists
+      # elsewhere. See the portability note in docs/RUNBOOK.md.
+      - name: Record interpreter the venv will be built against
+        run: |
+          python3 --version
+          readlink -f "$(command -v python3)"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync
+
+      - name: Build Electron bundle
+        working-directory: electron-app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build AppImage
+        env:
+          # appimagetool is itself an AppImage and needs FUSE, which the runners
+          # do not provide. This makes it unpack and run instead.
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: ./scripts/build_electron_appimage.sh
+
+      - name: Show what was produced
+        run: ls -lh ./*.AppImage
+
+      # Always kept, so workflow_dispatch runs are useful for testing too.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpectraSDR-x86_64.AppImage
+          path: ./*.AppImage
+          retention-days: 14
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./*.AppImage
