@@ -24,7 +24,7 @@ run in a normal browser or in the optional Electron desktop shell.
 
 - Python 3.10 or newer.
 - An RTL-SDR device reachable through `rtl_tcp`.
-- Node.js and npm only when using or building the Electron shell.
+- Node.js 22.12 or newer and npm only when using or building the Electron shell.
 - `dump1090` only when using live ADS-B decoding.
 
 ## Run from source

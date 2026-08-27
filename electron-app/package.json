@@ -5,13 +5,16 @@
   "main": "src/main.js",
   "author": "Sydney (via Alan)",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --linux",
     "test": "node --test test/*.test.js"
   },
   "devDependencies": {
-    "electron": "^39.8.10",
+    "electron": "^44.0.0",
     "electron-builder": "^26.15.3"
   },
   "build": {

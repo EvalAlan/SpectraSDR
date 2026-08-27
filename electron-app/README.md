@@ -2,6 +2,7 @@
 
 The Electron shell starts the existing Python backend and loads its web
 interface in a desktop window. It does not contain a separate frontend build.
+Development and packaging require Node.js 22.12 or newer.
 
 ## Run from a checkout
 
