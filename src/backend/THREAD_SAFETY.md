@@ -1,4 +1,9 @@
-# Thread Safety Refactoring - SpectraSDR Server
+# Thread-safety refactoring record
+
+> **Historical implementation note.** Line numbers and code locations in this
+> record may move as the server evolves. See
+> [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) for the current runtime
+> and concurrency overview.
 
 ## Summary of Changes
 

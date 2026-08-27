@@ -1,85 +1,147 @@
-# SpectraSDR Runbook
+# SpectraSDR runbook
+
+This runbook covers development smoke tests, runtime overrides, migration
+behavior, and Linux release checks. Installation and first-run instructions
+are in the repository [README](../README.md).
 
 ## Backend smoke test
+
+Create a clean environment and launch the server:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python src/backend/server.py
 ```
 
-Expect:
-- WS on `:8765`
-- HTTP on `:5555`
-- `/api/connections`, `/api/scan_hits`, `/api/adsb` return JSON
+Expected startup behavior:
 
-## Test + lint gates
+- WebSocket listener on `0.0.0.0:8765`.
+- HTTP listener on `0.0.0.0:5555`.
+- The UI loads at <http://localhost:5555>.
+- `/api/connections`, `/api/scan_hits`, and `/api/adsb` return JSON.
+- Failure to reach `rtl_tcp` is reported without preventing the HTTP UI from
+  starting.
+
+The bundled frontend assumes WebSocket port `8765`; the Electron launcher
+assumes HTTP port `5555`. Non-default values in `config.json` therefore require
+matching application changes.
+
+## Test and lint checks
+
+Runtime requirements do not install development tools. Install them explicitly
+in the active environment:
 
 ```bash
-ruff check src tests
+python -m pip install pytest ruff
 pytest tests -q
-cd electron-app && npm test    # data-migration coverage
+ruff check src tests
+cd electron-app && npm test
 ```
 
-## Renamed from evilSDR
+`src/backend/test_thread_safety.py` is a manual stress utility rather than part
+of the normal `tests/` suite. With the server running, invoke it separately:
 
-The project was `evilSDR` through Phase 3. Two things moved, and both stay
-backward compatible so an existing install upgrades without manual steps.
+```bash
+python src/backend/test_thread_safety.py
+```
 
-**Settings prefix** is now `SPECTRASDR_`. The old `EVILSDR_` names are still
-read as a fallback (`src/backend/appenv.py`), so existing shell profiles keep
-working. `SPECTRASDR_` wins when both are set. Affected variables:
-`CONFIG_FILE`, `BOOKMARKS_FILE`, `CONNECTIONS_FILE`, `METADATA_PREFS_FILE`,
-`RECORDINGS_DIR`, `SCAN_HITS_DB`, `SCAN_HITS_RETENTION_DAYS`, `DUMP1090_CMD`,
-`DISABLE_WATCHER`, `DATA_ROOT`.
+## Runtime files and overrides
 
-`SPECTRASDR_DATA_ROOT` is the user data directory itself, exported by both
-launchers to the same path the variables above point into. Decoder plugins read
-it via `appenv.data_root()` to locate their own config file; see
-[PLUGIN_AUTHORING.md](PLUGIN_AUTHORING.md). Unset, it falls back to
-`src/backend/`, matching where the other defaults land when the backend is run
-directly rather than through a launcher.
+Direct backend runs use repository-local defaults. Electron-based launches set
+explicit paths beneath an application data directory.
 
-**User data directory** moved, because `productName` changed:
+The backend recognizes these variables:
 
-| Launcher | Before | After |
+| Variable | Purpose | Direct-run default |
 | --- | --- | --- |
-| Electron (`npm start`, unpacked build) | `<appData>/evilsdr-electron/evilSDR` | `<appData>/SpectraSDR/SpectraSDR` |
-| AppImage | `~/.config/evilSDR` | `~/.config/SpectraSDR` |
+| `SPECTRASDR_CONFIG_FILE` | Main server configuration | `src/backend/config.json` |
+| `SPECTRASDR_BOOKMARKS_FILE` | Bookmark data | `src/backend/bookmarks.json` |
+| `SPECTRASDR_CONNECTIONS_FILE` | Saved profiles | `src/backend/connections.json` |
+| `SPECTRASDR_RECORDINGS_DIR` | WAV and IQ output | `recordings/` |
+| `SPECTRASDR_SCAN_HITS_DB` | SQLite history | Beside `connections.json` |
+| `SPECTRASDR_SCAN_HITS_RETENTION_DAYS` | Retention window | `30` |
+| `SPECTRASDR_DUMP1090_CMD` | ADS-B subprocess command | Unset |
+| `SPECTRASDR_DISABLE_WATCHER` | Disable decoder file watching when non-empty | Unset |
+| `SPECTRASDR_DATA_ROOT` | Shared base directory for plugin data | `src/backend/` |
 
-Both launchers move the old directory into place on first run, carrying
-settings, bookmarks, connections and recordings. The move is skipped if the new
-directory already exists, so a current install is never overwritten by a stale
-one. To verify after upgrading, confirm your bookmarks and recordings are still
-listed in the UI.
+The launchers also export `SPECTRASDR_METADATA_PREFS_FILE` for compatibility,
+although the current backend does not consume that file.
+
+## Migration from evilSDR
+
+The former `EVILSDR_` environment names remain fallback aliases in
+`src/backend/appenv.py`. When both prefixes are set, `SPECTRASDR_` takes
+precedence.
+
+The Electron and AppImage launchers attempt a one-time move from the former
+`evilSDR` data directory. Migration is skipped when the current SpectraSDR
+directory already exists, preventing stale data from replacing a current
+installation.
+
+After upgrading an existing installation, verify that connection profiles,
+bookmarks, recordings, and scan history still appear before removing any
+manual backup of the old data directory.
 
 ## ADS-B integration
 
-Set dump1090 command before start:
+Set the `dump1090` command before starting the backend:
 
 ```bash
 export SPECTRASDR_DUMP1090_CMD='dump1090 --net --quiet --write-json /tmp/d1090'
 python src/backend/server.py
 ```
 
-(If command is unset, ADS-B decoder still loads but only parses externally fed lines.)
+Then enable ADS-B under Settings → Plugins. Check both endpoints while
+diagnosing ingestion:
 
-## AppImage sanity check
-
-After building AppImage, verify:
-
-`scripts/build_electron_appimage.sh` writes the AppImage to the repo root, not
-to `dist/` (`dist/` only holds electron-builder's unpacked output).
-
-```bash
-./SpectraSDR-x86_64.AppImage --appimage-extract
-./SpectraSDR-x86_64.AppImage --version || true
+```text
+/api/adsb/process_status
+/api/adsb?limit=100
 ```
 
-Then launch and confirm:
-- UI loads
-- Start/Stop stream button works
-- Scan hits panel loads and CSV export downloads
-- Aircraft map window appears when the ADS-B decoder is enabled, and stays
-  hidden for every other decoder
+With no configured command, the plugin loads in an idle state and can still
+parse lines supplied by code or tests, but it receives no live subprocess
+input.
+
+## Electron development check
+
+From the repository root:
+
+```bash
+cd electron-app
+npm install
+npm start
+```
+
+Confirm that the backend starts, the window reaches the UI, closing the window
+terminates the child backend, and settings persist across a restart.
+
+## Build and verify the Linux AppImage
+
+The build requires Node.js/npm, `rsync`, `curl`, and `tar`. It downloads a
+relocatable CPython runtime and `appimagetool` on the first run.
+
+```bash
+cd electron-app
+npm ci
+npm run build
+cd ..
+./scripts/build_electron_appimage.sh
+```
+
+`electron-builder` writes its unpacked application below `electron-app/dist/`.
+The AppImage script assembles `build/electron-appimage/` and writes the final
+`*.AppImage` to the repository root.
+
+Release smoke checklist:
+
+- Launch succeeds on a machine without a system Python installation.
+- The UI loads and connects to the backend.
+- An RTL-TCP profile connects and Start/Stop controls streaming.
+- Spectrum, waterfall, and audio update.
+- Audio and IQ recordings are created in persistent user storage.
+- Scan history loads and exports both CSV and JSON.
+- The aircraft map appears only while ADS-B is enabled.
+- Bookmarks, profiles, and recordings remain after restarting the app.

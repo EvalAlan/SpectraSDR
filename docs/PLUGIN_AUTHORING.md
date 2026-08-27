@@ -1,386 +1,264 @@
-# SpectraSDR Plugin Authoring Guide
+# Decoder plugin authoring guide
 
-This guide covers everything you need to write, test, and deploy a decoder
-plugin for SpectraSDR.
+SpectraSDR discovers decoder classes from `src/backend/decoders/`. A plugin can
+consume demodulated audio or raw IQ and emit structured events to every
+connected client.
 
-## Table of Contents
+The exact API is summarized in the [plugin interface](PLUGIN_INTERFACE.md).
+This guide focuses on building and testing a new decoder.
 
-1. [Quick Start](#quick-start)
-2. [Architecture Overview](#architecture-overview)
-3. [BaseDecoder API Reference](#basedecoder-api-reference)
-4. [InputType and DecoderResult](#inputtype-and-decoderresult)
-5. [Lifecycle Hooks](#lifecycle-hooks)
-6. [Configuration Patterns](#configuration-patterns)
-7. [Testing Your Plugin](#testing-your-plugin)
-8. [Hot-Reload Development](#hot-reload-development)
-9. [Deploying a Plugin](#deploying-a-plugin)
-10. [Best Practices](#best-practices)
+## Quick start
 
----
-
-## Quick Start
-
-Create a new file in `src/backend/decoders/`:
+Create `src/backend/decoders/morse.py`:
 
 ```python
-"""src/backend/decoders/morse.py — Minimal Morse code decoder plugin."""
+from collections import deque
 
 import numpy as np
-from .base import BaseDecoder, InputType, DecoderResult
+
+from .base import BaseDecoder, DecoderResult, InputType
+
 
 class MorseDecoder(BaseDecoder):
     name = "morse"
-    description = "Morse code decoder (CW)"
+    description = "Morse code decoder"
     input_type = InputType.AUDIO
     version = "0.1.0"
 
-    def __init__(self, sample_rate: int = 48000):
+    def __init__(self, sample_rate: int = 48_000):
         super().__init__(sample_rate=sample_rate)
-        self._history: list[dict] = []
+        self._history = deque(maxlen=200)
 
     def process_audio(self, samples: np.ndarray):
-        # Your decode logic here
+        # Replace this placeholder with real detection and decoding.
+        if not samples.size or float(np.max(np.abs(samples))) < 0.5:
+            return
+
         result = DecoderResult(
             decoder=self.name,
             type="message",
-            summary="Decoded Morse text",
-            data={"text": "CQ CQ"},
+            summary="Detected Morse activity",
+            data={"peak": float(np.max(np.abs(samples)))},
         )
         self._history.append(result.to_dict())
         self.emit(result)
 
     def get_history(self, limit: int = 50) -> list[dict]:
-        return self._history[-limit:]
+        return list(self._history)[-limit:]
 
     def reset(self):
         self._history.clear()
 ```
 
-That's it. Drop it in the directory — it will be auto-discovered on next
-server start or hot-reload.
+Restart the backend or reload plugins from Settings → Plugins. The new decoder
+appears by its `name` and `description`.
 
----
+## Choose the input type
 
-## Architecture Overview
+Use `InputType.AUDIO` for protocols that operate after audio demodulation, such
+as pager or tone decoders. Implement `process_audio(samples)`. Samples are
+float32 and normally arrive at 48 kHz.
 
-```
-┌──────────────────────────────────────────────┐
-│  SDRServer (server.py)                       │
-│    │                                         │
-│    └── PluginManager (plugin_manager.py)     │
-│          ├── discover_decoders()             │
-│          ├── load_decoders()                 │
-│          │     └── BaseDecoder subclasses    │
-│          ├── file watcher thread             │
-│          └── reload()                        │
-│                                               │
-│  Frontend (app.js)                            │
-│    └── Plugin status panel                   │
-│          ├── dynamic decoder list            │
-│          ├── enable/disable toggles           │
-│          └── reload button                   │
-└──────────────────────────────────────────────┘
-```
+Use `InputType.IQ` when the decoder needs phase, quadrature, or its own RF
+channel filtering. Implement `process_iq(iq_samples)`. Samples are complex64 at
+the active radio sample rate.
 
-**Auto-discovery**: `discover_decoders()` uses `pkgutil.iter_modules()` to
-scan every `.py` file in `src/backend/decoders/`. Classes that subclass
-`BaseDecoder` (and have no remaining abstract methods) are automatically
-found and instantiated.
+The current host passes `sample_rate=48_000` to every decoder constructor,
+including IQ decoders. Until source metadata is added to the plugin interface,
+an IQ plugin must obtain its actual RF sample rate from its own configuration
+instead of `self.sample_rate`.
 
-**Naming**: Files starting with `_` or named `base.py` are skipped.
-Everything else is imported.
+Processing runs inline with the single DSP worker. Keep each call short and
+maintain incremental state between chunks. A plugin that performs file, model,
+network, or subprocess I/O should move that work to a resource owned by its
+lifecycle hooks.
 
----
+The ADS-B wrapper is a useful example: it declares IQ input for integration
+purposes but performs live ingestion on a subprocess-reader thread instead of
+processing the server's IQ chunks.
 
-## BaseDecoder API Reference
+## Emit structured events
 
-### Class Attributes (Required)
+Use `DecoderResult` rather than inventing a message envelope:
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `name` | `str` | Unique identifier (e.g. `"pocsag"`) |
-| `description` | `str` | Human-readable description |
-| `input_type` | `InputType` | `InputType.AUDIO` or `InputType.IQ` |
-| `version` | `str` | Semver string, e.g. `"0.1.0"` |
-| `author` | `str` | Optional author name |
-
-### Required Abstract Methods
-
-#### `get_history(limit: int = 50) -> list[dict]`
-Return the most recent decoded messages as a list of dicts. The UI uses
-this to populate the message history panel. Each dict *should* contain at
-minimum: `decoder`, `timestamp`, `type`, `summary`.
-
-#### `reset()`
-Clear all internal buffers and state. Called when the user flips modes
-or the scanner stops.
-
-### Input Processing (Override One)
-
-#### `process_audio(samples: np.ndarray)`
-Called when `input_type == InputType.AUDIO`. Receives FM-demodulated
-audio samples as a float32 numpy array.
-
-#### `process_iq(iq_samples: np.ndarray)`
-Called when `input_type == InputType.IQ`. Receives raw IQ samples as
-a complex64 numpy array.
-
-### Emitting Results
-
-#### `emit(message)`
-Push a decoded result to all registered callbacks (WebSocket clients).
-Accepts either a `dict` or a `DecoderResult` instance.
-
-**Required pattern** — always use `DecoderResult`:
 ```python
 self.emit(DecoderResult(
-    decoder=self.name,         # Optional — auto-set from self.name
-    type="message",            # Event type for UI filtering/badge
-    summary=f"Page from {address}",  # One-line shown in log
-    data={"address": address, "text": text},  # Structured payload
-    raw="optional hex/text",   # Shown in debug panel (optional))
+    decoder=self.name,
+    type="pager",
+    summary=f"Page from {address}",
+    data={"address": address, "text": text},
+    raw=raw_bits,
 ))
 ```
 
-The `type` field controls the badge color in the UI. Common values: `"pager"`, `"aircraft"`, `"message"`, `"alert"`, `"measurement"`, `"generic"`.
+Choose a stable `type` value such as `message`, `pager`, `aircraft`, `alert`, or
+`measurement`. Keep `summary` short enough for a log row, put machine-readable
+fields in `data`, and reserve `raw` for optional diagnostic text.
 
-**Backward compat** — raw dicts still work but lose the type badge, summary line, and structured data panel. All new plugins should use `DecoderResult`.
+If the UI needs recent results after reconnecting, append `result.to_dict()` to
+a bounded history collection and return it from `get_history()`.
 
----
+## Manage lifecycle resources
 
-## InputType and DecoderResult
+The plugin manager constructs the decoder and calls `init()` while loading it.
+Return `False` from `init()` when a required, static dependency is unavailable
+and the decoder should be omitted entirely.
 
-### InputType Enum
+`on_enable()` and `on_disable()` run for each user toggle. They should be
+idempotent and should own session resources such as threads, sockets, or child
+processes. An exception leaves the decoder disabled in the `error` state.
 
-- `InputType.AUDIO` — FM-demodulated audio (float32). Use for voice, pager, Morse, etc.
-- `InputType.IQ` — Raw complex IQ samples (complex64). Use for protocols that need the RF layer.
+`cleanup()` runs when an instance is unloaded. It must release anything that
+could survive `on_disable()`. `reset()` is the public contract for clearing
+buffers and history; call it in plugin-specific workflows when a fresh decode
+window is required.
 
-### DecoderResult Dataclass
-
-```python
-@dataclass
-class DecoderResult:
-    decoder: str              # Auto-set if you pass to emit()
-    timestamp: float          # Auto-set to time.time()
-    type: str = "generic"     # Event type for UI filtering
-    summary: str = ""         # One-line human-readable
-    data: dict = {}           # Decoder-specific payload
-    raw: Optional[str] = None # Raw hex/text for debug panel
-```
-
-The UI renders `type` as a badge, `summary` in the log, and `data`
-in an expandable detail view.
-
----
-
-## Lifecycle Hooks
-
-```
-init() ──► on_enable() ──► process_audio/iq() ──► on_disable() ──► cleanup()
-```
-
-### `init(**kwargs) -> bool`
-One-time setup. Called once before the first `on_enable()`. Return
-`False` to signal the decoder should not be loaded (plugin manager
-will skip it with a warning).
-
-Use for: loading ML models, parsing config files, opening databases.
+Example:
 
 ```python
-def init(self, **kwargs) -> bool:
-    model_path = kwargs.get("model_path", "default_model.pkl")
-    if not Path(model_path).exists():
-        logger.error(f"Model not found: {model_path}")
-        return False
-    self._model = load_model(model_path)
-    return True
+def on_enable(self):
+    self._stop.clear()
+    self._thread = threading.Thread(target=self._reader, daemon=True)
+    self._thread.start()
+
+def on_disable(self):
+    self._stop.set()
+    if self._thread:
+        self._thread.join(timeout=2)
+        self._thread = None
+
+def cleanup(self):
+    self.on_disable()
 ```
 
-### `on_enable()`
-Called every time the user enables the decoder. Allocate per-session
-resources here. If this raises an exception, the decoder is set to
-`ERROR` state and stays disabled.
-
-Use for: starting reader threads, subscribing to external feeds.
-
-### `on_disable()`
-Called when the user disables the decoder. Release per-session
-resources allocated in `on_enable()`.
-
-Use for: stopping threads, closing connections, flushing buffers.
-
-### `cleanup()`
-One-time teardown. Called when the decoder is being permanently
-unloaded (hot-reload shutdown or server exit).
-
-Use for: deleting temp files, unregistering from external services.
-
-### `health_check() -> dict`
-Return a dict with at minimum `{"healthy": bool, "state": str, "error": str|None}`.
-Override for runtime diagnostics (connection alive, model loaded, etc.).
-
----
-
-## Configuration Patterns
-
-### Environment Variables (recommended for external integrations)
+Override `health_check()` when an `idle`/`running` state is not enough to
+diagnose the integration. Start with `super().health_check()` and add fields:
 
 ```python
-import os
-
-class ADSBWrapperDecoder(BaseDecoder):
-    def on_enable(self):
-        cmd = os.environ.get("SPECTRASDR_DUMP1090_CMD", "").strip()
-        if not cmd:
-            return  # UI shows "not configured" via spec()
-        # ... start subprocess
+def health_check(self):
+    status = super().health_check()
+    status["lines_received"] = self._lines_received
+    return status
 ```
 
-### Plugin Config File (recommended for complex settings)
+## Configuration
 
-Store a `my_decoder.json` in the user's SpectraSDR data directory. Locate it
-with `appenv.data_root()` — that resolves `SPECTRASDR_DATA_ROOT`, which both
-launchers export to the directory they keep config, bookmarks and recordings
-in. Read it in `init()`:
+Use `appenv.env()` for environment settings so both the current
+`SPECTRASDR_` prefix and the migration-only `EVILSDR_` prefix work:
+
+```python
+from appenv import env
+
+command = env("MY_DECODER_CMD", "").strip()
+```
+
+Users then set `SPECTRASDR_MY_DECODER_CMD`.
+
+For structured configuration, keep a decoder-specific JSON file below the
+shared application data directory:
 
 ```python
 import json
+
 from appenv import data_root
 
+
 def init(self, **kwargs) -> bool:
-    config_path = data_root() / f"{self.name}.json"
-    if config_path.exists():
-        self._config = json.loads(config_path.read_text())
-    else:
-        self._config = self.DEFAULT_CONFIG
+    path = data_root() / f"{self.name}.json"
+    self._config = json.loads(path.read_text()) if path.exists() else {}
     return True
 ```
 
-### Server Command (advanced)
+Do not write secrets into emitted events, logs, `spec()`, or `health_check()`.
 
-To add custom WebSocket commands from your plugin, register a handler
-via the server's message dispatch. This is not directly exposed today —
-open an issue if you need it.
+Plugins cannot register their own HTTP routes or WebSocket commands today.
+Changes to those protocols must be added to `SDRServer`.
 
----
+## Test the plugin
 
-## Hot-Reload Development
+Place tests in `tests/test_morse.py` and import the backend package the same way
+as the existing test suite:
 
-The plugin manager watches `src/backend/decoders/` for file changes
-every 2 seconds. When a `.py` file is added, removed, or modified:
+```python
+from pathlib import Path
+import sys
 
-1. All old decoder instances are `on_disable()`'d and `cleanup()`'d.
-2. The decoders package is re-imported.
-3. New instances are `init()`'d and instantiated.
-4. Enabled state is preserved for decoders that still exist.
-5. All connected clients receive a `DECODER_LIST` update.
+import numpy as np
 
-### Disable the watcher (for reproducible runs / CI)
+BACKEND = Path(__file__).resolve().parents[1] / "src" / "backend"
+sys.path.insert(0, str(BACKEND))
+
+from decoders.base import DecoderState
+from decoders.morse import MorseDecoder
+
+
+def test_silence_does_not_emit():
+    decoder = MorseDecoder()
+    emitted = []
+    decoder.add_callback(emitted.append)
+    decoder.enabled = True
+
+    decoder.process_audio(np.zeros(4_800, dtype=np.float32))
+
+    assert emitted == []
+
+
+def test_lifecycle_error_is_isolated():
+    decoder = MorseDecoder()
+    decoder.on_enable = lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+
+    decoder.enabled = True
+
+    assert decoder.enabled is False
+    assert decoder.state is DecoderState.ERROR
+```
+
+Run the focused test, then the complete suite:
+
+```bash
+pytest tests/test_morse.py -q
+pytest tests -q
+```
+
+Useful additional cases include chunk-boundary handling, empty input, history
+limits, malformed configuration, repeat enable/disable cycles, callback
+failures, and cleanup after a partial startup.
+
+## Develop with hot reload
+
+The plugin manager checks `src/backend/decoders/*.py` for changes every two
+seconds. A change unloads all old instances and creates a fresh plugin set.
+Reloaded decoders currently return disabled, so re-enable the decoder in the
+UI after each reload.
+
+The current reload path does not evict existing modules from Python's import
+cache. Adding or removing a module is detected, but restart the backend to
+guarantee that edits to an already-imported module take effect.
+
+Use the Reload All button or send this WebSocket message for a manual reload:
+
+```json
+{"type": "RELOAD_DECODERS"}
+```
+
+Disable file watching for deterministic test or diagnostic runs:
 
 ```bash
 SPECTRASDR_DISABLE_WATCHER=1 python src/backend/server.py
 ```
 
-### Manual reload (from the frontend)
+## Deployment checklist
 
-Click **Reload All** in the Plugins settings tab, or send:
-```json
-{"type": "RELOAD_DECODERS"}
-```
+- The file lives directly in `src/backend/decoders/` and does not begin with
+  `_`.
+- The class has a unique lowercase `name`.
+- The matching `process_audio()` or `process_iq()` method is implemented.
+- `get_history()` and `reset()` are implemented.
+- Events use `DecoderResult` and contain no secrets.
+- Enable, disable, failure, and cleanup paths are tested.
+- The full Python test suite passes.
+- The plugin appears in Settings → Plugins and reports useful health data.
 
----
-
-## Testing Your Plugin
-
-SpectraSDR uses `pytest`. Place tests in `tests/`:
-
-```python
-"""tests/test_morse.py"""
-import pathlib
-import sys
-import numpy as np
-
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-BACKEND = ROOT / "src" / "backend"
-sys.path.insert(0, str(BACKEND))
-
-from decoders.morse import MorseDecoder
-
-
-def test_morse_minimal():
-    dec = MorseDecoder(sample_rate=48000)
-    assert dec.name == "morse"
-    assert dec.input_type.name == "AUDIO"
-    assert dec.enabled is False
-
-
-def test_morse_process_and_history():
-    dec = MorseDecoder()
-    dec.enabled = True
-    # Feed silence — should not crash
-    dec.process_audio(np.zeros(4800, dtype=np.float32))
-    history = dec.get_history()
-    assert isinstance(history, list)
-
-
-def test_morse_lifecycle_failure():
-    """If on_enable raises, decoder should be in ERROR state and disabled."""
-    dec = MorseDecoder()
-    dec.on_enable = lambda: (_ for _ in ()).throw(RuntimeError("boom"))
-    dec.enabled = True
-    assert dec.enabled is False
-    assert dec.state.value == "error"
-
-
-def test_morse_spec():
-    dec = MorseDecoder()
-    spec = dec.spec()
-    assert "name" in spec
-    assert "version" in spec
-    assert "state" in spec
-```
-
-Run with:
-```bash
-cd /path/to/SpectraSDR
-python -m pytest tests/ -v
-```
-
----
-
-## Deploying a Plugin
-
-1. **Create** your `<name>.py` in `src/backend/decoders/`.
-2. **Test**: `python -m pytest tests/test_<name>.py -v`
-3. **Restart** the server, or click **Reload All** in the UI.
-4. **Verify**: Open Settings → Plugins tab. Your decoder should appear
-   with an enable toggle.
-
-That's it. No registration, no config changes, no rebuild.
-
----
-
-## Best Practices
-
-- **Keep decoders stateless across enable/disable cycles.** Use
-  `on_enable()`/`on_disable()` for setup/teardown, and `reset()` for
-  clearing decode buffers.
-
-- **Use `DecoderResult` for new plugins.** The structured format gives
-  you free UI rendering. Raw dicts still work but miss features.
-
-- **Don't block.** `process_audio()` / `process_iq()` are called from
-  the processing thread pool. Heavy computation should be offloaded to
-  a background thread or processed in small chunks.
-
-- **Graceful degradation.** If your model file is missing, return `False`
-  from `init()`. The UI shows the decoder as unavailable.
-
-- **Name collisions.** The `name` attribute is the unique key. Two
-  plugins with the same name will overwrite each other — last one wins.
-
-- **File naming.** Avoid `_` prefix (reserved for internal modules) and
-  `base.py` (skipped by discovery).
-
-- **Version your plugin.** The `version` attribute is shown in the UI.
-  Use semver so users can tell if a reload picked up a new version.
+Dropping in a module is sufficient for a source checkout or writable unpacked
+application. A read-only packaged AppImage must be rebuilt to include a new
+plugin.

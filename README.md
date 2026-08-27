@@ -1,113 +1,73 @@
 # SpectraSDR
 
-## Overview
-A software-defined radio receiver for RTL-SDR hardware, driven over `rtl_tcp`.
-It shows a live spectrum and waterfall, demodulates AM, FM, NFM and SSB, scans
-bands and saved bookmarks, records audio and raw IQ, and decodes POCSAG paging
-and ADS-B aircraft traffic through a plugin system.
+SpectraSDR is a software-defined radio receiver for RTL-SDR hardware exposed
+through `rtl_tcp`. It provides a browser-based spectrum and waterfall, audio
+demodulation, scanning, recording, and decoder plugins. The same interface can
+run in a normal browser or in the optional Electron desktop shell.
 
-Runs in the browser against the Python backend, or as a standalone desktop app
-via the Electron shell.
-
-![SpectraSDR receiving an FM broadcast station, showing the spectrum plot and waterfall](docs/screenshot.png)
-
-*Receiving a broadcast FM station at 88.7 MHz. Saved bookmarks are blurred.*
+![SpectraSDR receiving an FM broadcast station](docs/screenshot.png)
 
 ## Features
-- **High Performance**: Optimized DSP pipeline using FIR filters and polyphase decimation.
-- **Stable Streaming**: Ring-buffered audio path for low latency without dropouts.
-- **Audio & IQ Recording**:
-  - Record demodulated audio to WAV.
-  - Capture raw IQ data for offline analysis.
-- **Scanning**:
-  - **Frequency Scanning**: Sweep a range of frequencies (Start/End/Step) to find active signals.
-  - **Memory Scanning**: Cycle through saved bookmarks.
-- **Demodulation**:
-  - **WBFM**: Wideband FM (Broadcast Radio).
-  - **NBFM**: Narrowband FM (Walkie Talkies, Emergency Services).
-  - **AM**: Amplitude Modulation (Air Traffic).
-  - **USB / LSB**: Single sideband.
-- **Decoders** (plugin system with auto-discovery and lifecycle hooks):
-  - **POCSAG**: Pager traffic, with BCH(31,21) 2-bit error correction.
-  - **ADS-B**: Aircraft positions via `dump1090`, plotted on a live map.
-  - Third-party decoders can be dropped in; see [docs/PLUGIN_AUTHORING.md](docs/PLUGIN_AUTHORING.md).
-- **Scan history**: Hits logged to SQLite with time-range filters and CSV/JSON export.
-- **Configuration**: User-space configuration via `src/backend/config.json`.
 
-## Structure
-- `src/backend`: Python SDR interface, DSP pipeline and WebSocket/HTTP server.
-- `src/backend/decoders`: Decoder plugins (POCSAG, ADS-B) and the plugin manager.
-- `src/frontend`: Web UI — spectrum, waterfall, controls and aircraft map.
-- `electron-app`: Electron desktop shell that wraps the backend and UI.
-- `tests`: Unit and integration tests.
-- `docs`: Project documentation.
-- `scripts`: AppImage build script.
-- `recordings`: Directory where Audio/IQ files are saved.
+- Live spectrum and waterfall displays.
+- WBFM, NFM, AM, USB, and LSB demodulation.
+- Demodulated WAV recording and raw IQ capture.
+- Bookmark and frequency-range scanning.
+- SQLite scan history, filters, analytics, and CSV/JSON export.
+- Decoder plugins with runtime discovery and health reporting.
+- POCSAG decoding with BCH(31,21) error correction.
+- ADS-B ingestion through `dump1090`, including an aircraft list and map.
+- Saved RTL-TCP connection profiles.
+- Browser and Linux AppImage launch options.
 
-## Roadmap
-- **Phase 1 (Complete)**: Stable RTL-TCP connection, minimal DSP, basic waterfall/spectrum visualization.
-- **Phase 2 (Complete)**: Audio demodulation (WBFM/NBFM), Audio/IQ Recording, and upgraded FIR-based DSP.
-- **Phase 3 (Complete)**:
-  - Connection manager profiles with persisted host/port settings.
-  - Scanner hit logging (SQLite) + frontend history panel, time-range filters, CSV export.
-  - Decoder lifecycle hooks + plugin auto-discovery + plugin status UI.
-  - ADS-B via `dump1090` subprocess orchestration and aircraft event normalization
-    (`src/backend/decoders/adsb_wrapper.py`).
-  - POCSAG BCH(31,21) 2-bit error correction with known-good fixtures.
-- **Phase 4 (In progress)**:
-  - ADS-B map UI (complete): Leaflet aircraft map in a movable, resizable
-    window, shown only while the ADS-B decoder is enabled.
-  - POCSAG inverted-polarity search and DC-offset-tolerant bit slicing.
-  - Per-profile scan analytics.
-  - TV/ATV experimental decoder path.
+## Requirements
 
-## Getting Started
+- Python 3.10 or newer.
+- An RTL-SDR device reachable through `rtl_tcp`.
+- Node.js and npm only when using or building the Electron shell.
+- `dump1090` only when using live ADS-B decoding.
 
-### Prerequisites
-- Python 3.9+
-- RTL-SDR dongle (and `rtl_tcp` running or accessible)
-- Node.js — only for the optional Electron desktop shell
-- `dump1090` — only for the ADS-B decoder
+## Run from source
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/EvalAlan/SpectraSDR.git
-   cd SpectraSDR
-   ```
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+Create an environment and install the Python dependencies:
 
-### Configuration
-1. Copy the example configuration:
-   ```bash
-   cp src/backend/config.json.example src/backend/config.json
-   ```
-2. Edit `src/backend/config.json` to match your environment (e.g., `rtl_host`, `rtl_port`).
+```bash
+git clone https://github.com/EvalAlan/SpectraSDR.git
+cd SpectraSDR
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
-### Running
-1. Start the backend server:
-   ```bash
-   python src/backend/server.py
-   ```
-2. Open the frontend in your browser:
-   ```
-   http://localhost:5555
-   ```
+Start `rtl_tcp` locally, or configure the address of an existing instance:
 
-The HTTP port is `http_port` in `config.json`; the WebSocket stream uses
-`ws_port` separately.
+```bash
+rtl_tcp -a 127.0.0.1 -p 1234
+```
 
-### Desktop app
-The Electron shell starts the backend itself and opens the UI in its own
-window, so there is no browser step:
+The backend has working defaults. To customize them, copy the example first:
+
+```bash
+cp src/backend/config.json.example src/backend/config.json
+```
+
+Start SpectraSDR:
+
+```bash
+python src/backend/server.py
+```
+
+Open <http://localhost:5555>. The backend serves the frontend and listens for
+its WebSocket connection on port `8765`.
+
+The bundled frontend currently connects to WebSocket port `8765` directly.
+The Electron shell also expects HTTP port `5555`, so keep both defaults when
+using the desktop app.
+
+## Desktop app
+
+The Electron shell starts the Python backend and opens the UI in a desktop
+window:
 
 ```bash
 cd electron-app
@@ -115,14 +75,84 @@ npm install
 npm start
 ```
 
-To build a self-contained Linux AppImage:
+For packaging and AppImage instructions, see
+[electron-app/README.md](electron-app/README.md).
+
+## Configuration and data
+
+When the backend is run directly, configuration defaults to `src/backend/`
+and recordings default to `recordings/` at the repository root. Files created
+there are ignored by Git.
+
+The Electron and AppImage launchers use an application data directory instead
+so upgrades do not overwrite settings, bookmarks, connection profiles,
+recordings, or scan history. The exact parent directory is platform-specific
+and comes from Electron's `app.getPath("userData")`.
+
+Every backend path can be overridden with an environment variable:
+
+| Setting | Environment variable |
+| --- | --- |
+| Main configuration | `SPECTRASDR_CONFIG_FILE` |
+| Bookmarks | `SPECTRASDR_BOOKMARKS_FILE` |
+| Connection profiles | `SPECTRASDR_CONNECTIONS_FILE` |
+| Recordings directory | `SPECTRASDR_RECORDINGS_DIR` |
+| Scan-history database | `SPECTRASDR_SCAN_HITS_DB` |
+| Shared application data directory | `SPECTRASDR_DATA_ROOT` |
+
+The default radio, HTTP, and WebSocket settings are documented in
+[`config.json.example`](src/backend/config.json.example). The old `EVILSDR_`
+environment prefix remains available as a migration fallback; `SPECTRASDR_`
+wins when both are set.
+
+## ADS-B
+
+Set the command used to start `dump1090`, then enable the ADS-B decoder in the
+Plugins settings:
 
 ```bash
-cd electron-app && npm install && npm run build
-cd .. && ./scripts/build_electron_appimage.sh
+export SPECTRASDR_DUMP1090_CMD='dump1090 --net --quiet --write-json /tmp/d1090'
+python src/backend/server.py
 ```
 
-The AppImage is written to the repository root. It bundles a relocatable
-CPython from [python-build-standalone](https://github.com/astral-sh/python-build-standalone)
-along with the backend's dependencies, so it does not require Python on the
-host — the only runtime requirement is a reachable `rtl_tcp`.
+Without this variable, the ADS-B plugin still loads but has no live subprocess
+input.
+
+## Development
+
+Install the runtime dependencies plus the development tools, then run the
+Python and Electron tests:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install pytest ruff
+pytest tests -q
+ruff check src tests
+cd electron-app && npm test
+```
+
+Repository layout:
+
+| Path | Purpose |
+| --- | --- |
+| `src/backend/` | Python server, RTL-TCP client, DSP, scanner, and persistence |
+| `src/backend/decoders/` | Decoder API, plugin manager, POCSAG, and ADS-B |
+| `src/frontend/` | Static HTML, CSS, canvas visualizations, and browser client |
+| `electron-app/` | Electron launcher and packaging metadata |
+| `tests/` | Python unit and regression tests |
+| `docs/` | Architecture, operations, plugin, and historical planning docs |
+| `scripts/` | Release and AppImage tooling |
+
+For implementation details, see [Architecture](docs/ARCHITECTURE.md). For
+operations and release checks, see the [Runbook](docs/RUNBOOK.md). The
+[documentation index](docs/README.md) lists the remaining guides.
+
+## Current status
+
+The core receiver, scanner, recording paths, plugin framework, POCSAG decoder,
+ADS-B integration, map, and scan analytics are implemented. Current known
+areas for further work include more robust POCSAG polarity/bit slicing and an
+experimental TV/ATV decoder path.
+
+See the current [roadmap](docs/ROADMAP.md) for planned engineering work and
+known integration gaps.
